@@ -1,0 +1,47 @@
+on:
+  pull_request:
+    branches:
+      - master
+name: Terraform
+jobs:
+  filter-to-pr-open-synced:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: 0.12.26
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TF_ACTION_WORKING_DIR: .
+    - id: fmt
+      run: terraform fmt
+    - id: init
+      run: terraform init
+      env:
+        GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+    - id: validate
+      run: terraform validate
+      env:
+        GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+    - id: plan
+      run: terraform plan
+      env:
+        TF_VAR_PAGERDUTY_TOKEN: ${{ secrets.PAGERDUTY_TOKEN }}
+        GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+    - uses: actions/github-script@0.9.0
+      if: github.event_name == 'pull_request'
+      env:
+        STDOUT: "```terraform\n${{ steps.plan.outputs.stdout }}```"
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const output = `<details><summary>tf plan:</summary>\n\n${process.env.STDOUT}\n\n</details>`;
+
+          github.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: output
+          })

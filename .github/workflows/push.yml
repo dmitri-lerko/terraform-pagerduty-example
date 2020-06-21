@@ -1,0 +1,25 @@
+on:
+  push:
+    branches:
+      - master
+name: Terraform
+jobs:
+  filter-to-pr-open-synced:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: 0.12.26
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TF_ACTION_WORKING_DIR: .
+    - id: init
+      run: terraform init
+      env:
+        GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+    - id: apply
+      run: terraform apply -auto-approve -parallelism=100 -input=false
+      env:
+        TF_VAR_PAGERDUTY_TOKEN: ${{ secrets.PAGERDUTY_TOKEN }}
+        GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
